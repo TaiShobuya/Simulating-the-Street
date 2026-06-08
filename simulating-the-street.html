@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simulating the Street — Oxford St, London</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<style>
+  :root{
+    --paper:#F4F2EA; --ink:#14110D; --ink-soft:#6B675C; --line:#CFCABC;
+    --accent:#1F4FE0; --amber:#D98A1F; --red:#B23A2E; --green:#2E7D5B;
+    --pave:#E5EDDD; --road:#E8E6DF; --block:#EAE7DD;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif;}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 40px;}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--ink-soft);}
+  h1{font-size:26px;font-weight:600;letter-spacing:-.01em;margin:4px 0 2px;}
+  .sub{font-size:13px;color:var(--ink-soft);margin:0 0 16px;}
+  .stage{border:1px solid var(--line);background:var(--paper);border-radius:3px;overflow:hidden;}
+  #sketch{display:block;width:100%;}
+  .bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+    padding:12px 14px;border-top:1px solid var(--line);
+    font-family:"IBM Plex Mono",monospace;font-size:12px;}
+  .ctrl{display:flex;align-items:center;gap:7px;}
+  .ctrl label{color:var(--ink-soft);white-space:nowrap;}
+  button{font-family:"IBM Plex Mono",monospace;font-size:12px;border:1px solid var(--ink);
+    background:var(--paper);color:var(--ink);padding:5px 12px;border-radius:2px;cursor:pointer;
+    transition:background .12s,color .12s;}
+  button:hover{background:var(--ink);color:var(--paper);}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.primary:hover{background:#1740bd;}
+  input[type=range]{width:104px;accent-color:var(--accent);}
+  .val{min-width:30px;color:var(--ink);}
+  .toggles{display:flex;gap:14px;}
+  .toggles label{display:flex;align-items:center;gap:5px;color:var(--ink-soft);cursor:pointer;}
+  .hud{display:flex;gap:22px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line);
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft);}
+  .hud b{color:var(--ink);font-weight:600;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:14px;
+    font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-soft);}
+  .legend span{display:flex;align-items:center;gap:6px;}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+  .sq{width:11px;height:7px;display:inline-block;border-radius:1px;}
+  .foot{margin-top:18px;font-size:11px;color:var(--ink-soft);line-height:1.6;
+    font-family:"IBM Plex Mono",monospace;border-top:1px solid var(--line);padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">P04 · Agent-Based Modelling · C# → p5.js</div>
+  <h1>Simulating the Street</h1>
+  <p class="sub">Pedestrians and vehicles negotiate unsignalised crossings on Oxford Street, London, through behavioural cues: Social Force Model steering, gap acceptance, threat detection, and negotiated crossing.</p>
+
+  <div class="stage">
+    <div id="sketch"></div>
+    <div class="bar">
+      <button id="playBtn" class="primary">Pause</button>
+      <button id="stepBtn">Step</button>
+      <button id="resetBtn">Reset</button>
+      <div class="ctrl"><label>peds</label><input id="pedSld" type="range" min="0" max="160" value="70"><span class="val" id="pedVal">70</span></div>
+      <div class="ctrl"><label>vehicles</label><input id="vehSld" type="range" min="0" max="40" value="16"><span class="val" id="vehVal">16</span></div>
+      <div class="ctrl"><label>reckless&nbsp;%</label><input id="recSld" type="range" min="0" max="30" value="5"><span class="val" id="recVal">5</span></div>
+      <div class="ctrl"><label>speed</label><input id="spdSld" type="range" min="5" max="40" value="20"><span class="val" id="spdVal">2.0×</span></div>
+      <div class="toggles">
+        <label><input id="scanChk" type="checkbox"> scan zones</label>
+        <label><input id="labelChk" type="checkbox" checked> labels</label>
+      </div>
+    </div>
+    <div class="hud">
+      <span>pedestrians <b id="hPed">0</b></span>
+      <span>vehicles <b id="hVeh">0</b></span>
+      <span>waiting <b id="hWait">0</b></span>
+      <span>crossings <b id="hCross">0</b></span>
+      <span>signal <b id="hSig">—</b></span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:#14110D"></i>pedestrian (moving)</span>
+    <span><i class="dot" style="background:#D98A1F"></i>waiting at kerb</span>
+    <span><i class="dot" style="background:#1F4FE0"></i>crossing</span>
+    <span><i class="sq" style="background:#6B675C"></i>vehicle (moving)</span>
+    <span><i class="sq" style="background:#B23A2E"></i>vehicle (stopping)</span>
+    <span><i class="sq" style="background:#2E7D5B"></i>bus</span>
+    <span><i class="dot" style="background:#9B59B6"></i>signal</span>
+  </div>
+
+  <div class="foot">
+    Pedestrian steering fuses the Social Force Model (Helbing &amp; Molnár 1995) with Boids; vehicles use IDM-inspired leader-matching; crossings resolve through gap acceptance (Zhao et al. 2019). Reckless agents (default 5%) accept a 0.7× gap. Reconstructed from the project's documented behaviour and site plot. Origin bottom-left; street 230 m, cross-section 49 m.
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SIMULATING THE STREET  —  p5.js port
+   Coordinates in metres. Origin bottom-left. x: 0..230 (street),
+   y: 0..49 (cross-section). Bands, from y=0 up:
+     south block 0-14 | south pavement 14-20 | carriageway 20-29
+     | north pavement 29-35 | north block 35-49
+   ============================================================ */
+
+// ---- world constants (metres) -------------------------------
+const L = 230, H = 49;
+const SOUTH_KERB = 20, NORTH_KERB = 29;            // road edges
+const SP = [14.5, 19.4], NP = [29.6, 34.5];        // walkable pavement bands
+const LANE_E = 22.4, LANE_W = 26.6;                // lane centrelines (east +x / west -x)
+const LANE_HW = 2.0;                               // half lane width for snapping
+
+// ---- behavioural parameters (from the project board) --------
+const NEIGH = 3.0;          // SFM neighbour influence radius
+const CROSS_SCAN = 20.0;    // ped gap-acceptance scan (m)
+const VEH_SCAN = 20.0;      // vehicle forward scan (m)
+const PED_MIN = 1.0, PED_MAX = 1.5;   // m/s
+const CROSS_SPD = 1.4;      // m/s vertical march while crossing
+const VEH_SPD = 8.5;        // m/s (~20 mph limit)
+const BUS_P = 0.06;         // chance a released vehicle is a bus
+const RELEASE_P = 0.55;     // per-frame chance to release one pending vehicle
+const BUS_DWELL = 4.0;      // s dwell at bus stop
+const SIG_HALF = 7.0;       // s per signal phase (green/red)
+const GROUP_W = [0.20,0.40,0.30,0.10]; // P(group size 1,2,3,4)
+
+// ---- site geometry (reconstructed from the plot) ------------
+const SITE = buildSite();
+function buildSite(){
+  const shopsS=[], shopsN=[];
+  // south pavement shops (blue dots) — skip station/side-street gaps
+  [22,40,52,100,116,132,168,182,196,212].forEach(x=>shopsS.push({x,y:18.8}));
+  // north pavement shops
+  [40,60,78,96,118,150,168,184,200,216].forEach(x=>shopsN.push({x,y:30.2}));
+  const stationExits=[{x:62,y:15.2},{x:92,y:15.2}];   // orange (spawn)
+  const stationEnts =[{x:70,y:15.2},{x:100,y:15.2}];  // orange (despawn)
+  const busStop={x:152,y:18.9};                        // ped bus stop (orange sq)
+  const vehBusStop={x:152,y:LANE_E};                   // vehicle bus stop
+  const signals=[{x:24,y:SOUTH_KERB},{x:24,y:NORTH_KERB}]; // purple
+  const zebraX=[18,30];                                // crossing stripes (visual)
+  const obstacles=[{x:48,y:18.6},{x:120,y:18.4},{x:176,y:18.9},
+                   {x:55,y:30.4},{x:104,y:30.1},{x:140,y:30.5},{x:206,y:30.2}];
+  const endsS=[{x:1.5,y:18.5},{x:228.5,y:18.5}];
+  const endsN=[{x:1.5,y:31.5},{x:228.5,y:31.5}];
+  return {shopsS,shopsN,stationExits,stationEnts,busStop,vehBusStop,
+          signals,zebraX,obstacles,endsS,endsN};
+}
+
+// ---- small vector helpers -----------------------------------
+const sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y});
+const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y});
+const mul=(a,s)=>({x:a.x*s,y:a.y*s});
+const len=a=>Math.hypot(a.x,a.y);
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const norm=a=>{const l=len(a)||1;return{x:a.x/l,y:a.y/l};};
+const clamp=(v,lo,hi)=>v<lo?lo:(v>hi?hi:v);
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=arr=>arr[(Math.random()*arr.length)|0];
+
+// ---- global sim state ---------------------------------------
+let sim, running=true, simMult=2.0, recklessP=0.05;
+let targetPeds=70, targetVehs=16;
+let showScan=false, showLabels=true;
+let crossingsDone=0;
+
+function groupSize(){const r=Math.random();let a=0;for(let i=0;i<4;i++){a+=GROUP_W[i];if(r<a)return i+1;}return 1;}
+function sigGreen(t){return (Math.floor(t/SIG_HALF)%2)===0;} // true=green for vehicles
+
+// ================== PEDESTRIAN ===============================
+class Ped{
+  constructor(spawn, dest, gid){
+    this.pos={x:spawn.x,y:spawn.y};
+    this.vel={x:0,y:0};
+    this.speed=rnd(PED_MIN,PED_MAX);
+    this.gid=gid;
+    this.reckless=Math.random()<recklessP;
+    this.side=spawn.y<SOUTH_KERB?'S':'N';
+    this.dest=dest;
+    this.destSide=dest.y<SOUTH_KERB?'S':'N';
+    this.needsCross=this.side!==this.destSide;
+    this.state='moving';
+    this.dead=false;
+    // crossing geometry
+    if(this.needsCross){
+      this.crossX=clamp(dest.x, 6, L-6);
+      this.kerbFrom=this.side==='S'?SOUTH_KERB:NORTH_KERB;
+      this.kerbTo  =this.side==='S'?NORTH_KERB:SOUTH_KERB;
+    }
+    this.r=0.6;
+  }
+  band(){ return this.pos.y<SOUTH_KERB?SP:NP; }
+  // Social Force Model: desired direction + repulsions
+  sfm(peds, goal){
+    let desired=norm(sub(goal,this.pos));   // attraction to goal
+    let rep={x:0,y:0};
+    for(const o of peds){
+      if(o===this||o.gid===this.gid) continue;     // exclude same group
+      const d=dist(this.pos,o.pos);
+      if(d<NEIGH&&d>1e-3){const a=mul(norm(sub(this.pos,o.pos)),1/Math.pow(d,1.5));rep=add(rep,a);}
+    }
+    for(const ob of SITE.obstacles){
+      const d=dist(this.pos,ob);
+      if(d<2.2&&d>1e-3){const a=mul(norm(sub(this.pos,ob)),1.4/(d*d));rep=add(rep,a);}
+    }
+    // pavement edge repulsion (keep within band when not crossing)
+    if(this.state==='moving'){
+      const b=this.band();
+      if(this.pos.y-b[0]<1.5) rep.y+= (1.5-(this.pos.y-b[0]))*0.9;
+      if(b[1]-this.pos.y<1.5) rep.y-= (1.5-(b[1]-this.pos.y))*0.9;
+    }
+    let dir=norm(add(desired,mul(rep,0.5)));
+    const desiredVel=mul(dir,this.speed);
+    return sub(desiredVel,this.vel); // steering accel
+  }
+  // gap acceptance against vehicles in the lanes ahead
+  gapClear(vehs){
+    const eff=this.reckless?0.7*CROSS_SCAN:CROSS_SCAN;
+    for(const v of vehs){
+      // vehicle in the carriageway, approaching crossX from behind in its dir
+      const ahead=(v.dir>0)?(v.pos.x< this.crossX):(v.pos.x> this.crossX);
+      const d=Math.abs(v.pos.x-this.crossX);
+      if(ahead && d<eff){
+        if(v.state==='stopping' && d>4) continue; // a stopping car yields
+        return false;
+      }
+    }
+    return true;
+  }
+  update(dt, peds, vehs){
+    if(this.state==='moving'){
+      const goal = this.needsCross ? {x:this.crossX,y:this.kerbFrom} : this.dest;
+      const acc=this.sfm(peds,goal);
+      this.vel=add(this.vel,mul(acc,dt*3.2));
+      const sp=len(this.vel); if(sp>this.speed) this.vel=mul(this.vel,this.speed/sp);
+      this.pos=add(this.pos,mul(this.vel,dt));
+      // clamp inside pavement band
+      const b=this.band(); this.pos.y=clamp(this.pos.y,b[0],b[1]);
+      this.pos.x=clamp(this.pos.x,0.5,L-0.5);
+      if(dist(this.pos,goal)<1.4){
+        if(this.needsCross){ this.state='waiting'; this.vel={x:0,y:0}; this.pos.y=this.kerbFrom; }
+        else { this.dead=true; }
+      }
+    } else if(this.state==='waiting'){
+      this.pos.x=this.crossX;
+      if(this.gapClear(vehs)){ this.state='crossing'; crossingsDone++; }
+    } else if(this.state==='crossing'){
+      const sgn=this.kerbTo>this.kerbFrom?1:-1;
+      this.pos.y+=sgn*CROSS_SPD*dt;
+      this.pos.x=this.crossX;
+      if((sgn>0&&this.pos.y>=this.kerbTo)||(sgn<0&&this.pos.y<=this.kerbTo)){
+        this.pos.y=this.kerbTo; this.side=this.destSide; this.needsCross=false;
+        this.state='moving'; this.vel={x:0,y:0};
+      }
+    }
+  }
+}
+
+// ================== VEHICLE ==================================
+class Veh{
+  constructor(dir,isBus){
+    this.dir=dir;                       // +1 east, -1 west
+    this.laneY=dir>0?LANE_E:LANE_W;
+    this.pos={x:dir>0?-3:L+3,y:this.laneY};
+    this.speed=0;
+    this.desired=VEH_SPD*rnd(0.92,1.05);
+    this.isBus=isBus; this.busDone=false; this.dwell=0;
+    this.state='moving'; this.dead=false;
+    this.L=isBus?9:4.6; this.W=isBus?2.5:2.0;
+  }
+  scan(peds, vehs, t){
+    let block=false, leaderSpeed=Infinity, leaderGap=Infinity;
+    // red signal ahead within 8 m
+    if(!sigGreen(t)){
+      for(const s of SITE.signals){
+        const ahead=this.dir>0?(s.x>this.pos.x):(s.x<this.pos.x);
+        const d=Math.abs(s.x-this.pos.x);
+        if(ahead&&d<8) block=true;
+      }
+    }
+    // pedestrian about to cross / crossing ahead in this lane
+    for(const p of peds){
+      if(p.state!=='waiting'&&p.state!=='crossing') continue;
+      const ahead=this.dir>0?(p.pos.x>this.pos.x-1):(p.pos.x<this.pos.x+1);
+      const d=Math.abs(p.pos.x-this.pos.x);
+      if(!ahead||d>VEH_SCAN) continue;
+      // does this pedestrian interact with this lane?
+      const inLaneY=Math.abs(p.pos.y-this.laneY)<3.2;
+      const willEnter=(p.state==='waiting'); // waiting at kerb adjacent → will step in
+      if(inLaneY||willEnter) block=true;
+    }
+    // leader vehicle ahead, same lane & dir (car-following)
+    for(const v of vehs){
+      if(v===this||v.dir!==this.dir||Math.abs(v.laneY-this.laneY)>0.5) continue;
+      const ahead=this.dir>0?(v.pos.x>this.pos.x):(v.pos.x<this.pos.x);
+      const d=Math.abs(v.pos.x-this.pos.x);
+      if(ahead&&d<VEH_SCAN&&d<leaderGap){leaderGap=d;leaderSpeed=v.speed;}
+    }
+    return {block, leaderSpeed, leaderGap};
+  }
+  update(dt, peds, vehs, t){
+    // bus dwell at stop
+    if(this.isBus&&!this.busDone){
+      const d=Math.abs(this.pos.x-SITE.vehBusStop.x);
+      const past=this.dir>0?this.pos.x>SITE.vehBusStop.x:this.pos.x<SITE.vehBusStop.x;
+      if(d<3&&!past){ this.state='stopping'; this.speed=0; this.dwell+=dt;
+        if(this.dwell>BUS_DWELL){this.busDone=true;} return this.advance(dt); }
+    }
+    const s=this.scan(peds,vehs,t);
+    let target=this.desired;
+    if(s.block) target=0;
+    if(s.leaderSpeed<this.desired){
+      // match a slower leader; brake harder if gap small
+      target=Math.min(target, s.leaderGap<7?Math.min(s.leaderSpeed,s.leaderGap*0.6):s.leaderSpeed);
+    }
+    // accelerate / decelerate toward target
+    const a=target>this.speed?9:18;
+    this.speed=clamp(this.speed + Math.sign(target-this.speed)*a*dt, 0, this.desired);
+    if(this.speed<0.05&&target===0) this.state='stopping'; else if(this.speed>0.1) this.state='moving';
+    return this.advance(dt);
+  }
+  advance(dt){
+    this.pos.x+=this.dir*this.speed*dt;
+    if((this.dir>0&&this.pos.x>L+5)||(this.dir<0&&this.pos.x<-5)) this.dead=true;
+  }
+}
+
+// ================== SIM ======================================
+class Sim{
+  constructor(){ this.peds=[]; this.vehs=[]; this.gid=0; this.t=0; crossingsDone=0; }
+  pedSpawns(){ return [...SITE.endsS,...SITE.endsN,...SITE.stationExits,...SITE.shopsS,...SITE.shopsN]; }
+  pedDests(){ return [...SITE.endsS,...SITE.endsN,...SITE.stationEnts,...SITE.shopsS,...SITE.shopsN,SITE.busStop]; }
+  spawnPedGroup(){
+    const sp=pick(this.pedSpawns());
+    const gs=groupSize(); const gid=this.gid++;
+    const dests=this.pedDests();
+    for(let i=0;i<gs;i++){
+      const dest=pick(dests);
+      if(dist(sp,dest)<8) continue;
+      const jitter={x:sp.x+rnd(-1.2,1.2),y:clamp(sp.y+rnd(-0.8,0.8),
+        sp.y<SOUTH_KERB?SP[0]:NP[0], sp.y<SOUTH_KERB?SP[1]:NP[1])};
+      this.peds.push(new Ped(jitter,dest,gid));
+    }
+  }
+  update(dt){
+    this.t+=dt;
+    // maintain populations
+    let guard=0;
+    while(this.peds.length<targetPeds && guard++<30) this.spawnPedGroup();
+    if(this.vehs.length<targetVehs && Math.random()<RELEASE_P){
+      const dir=Math.random()<0.5?1:-1;
+      this.vehs.push(new Veh(dir, Math.random()<BUS_P));
+    }
+    for(const p of this.peds) p.update(dt,this.peds,this.vehs);
+    for(const v of this.vehs) v.update(dt,this.peds,this.vehs,this.t);
+    this.peds=this.peds.filter(p=>!p.dead);
+    this.vehs=this.vehs.filter(v=>!v.dead);
+  }
+}
+
+// ================== RENDER (p5) ==============================
+let MX=14, MTOP=26, MBOT=18, ppm=4.5, plotW=0, plotH=0;
+const X=xm=>MX+xm*ppm;
+const Y=ym=>MTOP+(H-ym)*ppm;
+
+function setup(){
+  const host=document.getElementById('sketch');
+  const w=host.clientWidth||1100;
+  const cnv=createCanvas(w, sizeH(w)); cnv.parent('sketch');
+  recompute(w);
+  sim=new Sim();
+  wireUI();
+  frameRate(60);
+}
+function sizeH(w){ const pw=w-2*MX; const pp=pw/L; return Math.round(H*pp+MTOP+MBOT); }
+function recompute(w){ plotW=w-2*MX; ppm=plotW/L; plotH=H*ppm; }
+function windowResized(){ const w=document.getElementById('sketch').clientWidth; resizeCanvas(w,sizeH(w)); recompute(w); }
+
+function draw(){
+  background('#F4F2EA');
+  if(running){ const dt=simMult/60; sim.update(dt); }
+  drawSite();
+  for(const v of sim.vehs) drawVeh(v);
+  for(const p of sim.peds) drawPed(p);
+  if(showScan) drawScan();
+  updateHUD();
+}
+
+function rectM(x0,x1,y0,y1,fill,stroke){
+  if(fill){noStroke();fill(fill);} else noFill();
+  if(stroke){stroke(stroke);strokeWeight(1);} else noStroke();
+  rect(X(x0),Y(y1),(x1-x0)*ppm,(y1-y0)*ppm);
+}
+function drawSite(){
+  // blocks
+  rectM(0,L,0,14,'#EAE7DD'); rectM(0,L,35,49,'#EAE7DD');
+  // pavements
+  rectM(0,L,14,20,'#E5EDDD'); rectM(0,L,29,35,'#E5EDDD');
+  // carriageway
+  rectM(0,L,20,29,'#E8E6DF');
+  // lane divider (dashed centre of road)
+  stroke('#BBB6A8'); strokeWeight(1); drawingContext.setLineDash([6,7]);
+  line(X(0),Y(24.5),X(L),Y(24.5)); drawingContext.setLineDash([]);
+  // kerbs
+  stroke('#C7C2B4'); strokeWeight(1.2);
+  line(X(0),Y(SOUTH_KERB),X(L),Y(SOUTH_KERB)); line(X(0),Y(NORTH_KERB),X(L),Y(NORTH_KERB));
+  // zebra crossing stripes at the left intersection
+  noStroke(); fill('#F4F2EA');
+  for(let zx=SITE.zebraX[0];zx<SITE.zebraX[1];zx+=1.6){ rectM(zx,zx+0.8,SOUTH_KERB,NORTH_KERB,'#F4F2EA'); }
+  // markers
+  SITE.obstacles.forEach(o=>marker(o,'#14110D',1.0));
+  SITE.shopsS.concat(SITE.shopsN).forEach(s=>marker(s,'#2E73C9',1.3));
+  SITE.stationExits.forEach(s=>marker(s,'#D98A1F',1.6));
+  SITE.stationEnts.forEach(s=>marker(s,'#D98A1F',1.6));
+  SITE.endsS.concat(SITE.endsN).forEach(s=>marker(s,'#B23A2E',1.6));
+  SITE.signals.forEach(s=>marker(s, sigGreen(sim?sim.t:0)?'#2E7D5B':'#B23A2E',1.8));
+  // bus stop square
+  noStroke(); fill('#D98A1F');
+  rect(X(SITE.busStop.x)-6,Y(SITE.busStop.y)-4,12,8,1);
+  if(showLabels) labels();
+}
+function marker(p,col,rm){ noStroke(); fill(col); circle(X(p.x),Y(p.y),rm*ppm*0.9); }
+function labels(){
+  noStroke(); fill('#9A9586'); textFont('IBM Plex Mono'); textSize(9);
+  textAlign(LEFT,BOTTOM);
+  text('IKEA',X(56),Y(45)); text('HSBC',X(150),Y(45)); text('H&M',X(214),Y(45));
+  textAlign(LEFT,TOP);
+  text('Oxford Street Station',X(46),Y(13)); text('Boots',X(214),Y(13));
+  textAlign(CENTER,CENTER); fill('#8C8779');
+  text('OXFORD ST',X(115),Y(24.5));
+  textAlign(LEFT,BOTTOM); fill('#9A9586');
+  text('Regent St',X(15),Y(48)); text('Great Portland St',X(135),Y(48));
+  text('Bus Stop',X(146),Y(21.4));
+}
+function drawPed(p){
+  let c='#14110D';
+  if(p.state==='waiting') c='#D98A1F'; else if(p.state==='crossing') c='#1F4FE0';
+  noStroke(); fill(c); circle(X(p.pos.x),Y(p.pos.y),Math.max(4,1.3*ppm));
+  if(p.reckless){ noFill(); stroke('#B23A2E'); strokeWeight(1); circle(X(p.pos.x),Y(p.pos.y),Math.max(7,2.0*ppm)); }
+}
+function drawVeh(v){
+  push(); translate(X(v.pos.x),Y(v.laneY));
+  let c=v.isBus?'#2E7D5B':(v.state==='stopping'?'#B23A2E':'#6B675C');
+  noStroke(); fill(c);
+  const w=v.L*ppm, h=v.W*ppm;
+  rect(-w/2,-h/2,w,h,1.5);
+  // direction nib
+  fill('#F4F2EA'); const nx=v.dir>0?w/2-2:-w/2; rect(nx-(v.dir>0?0:0),-h/2+1.5,2,h-3,0.5);
+  pop();
+}
+function drawScan(){
+  noStroke();
+  for(const v of sim.vehs){
+    fill(31,79,224,22);
+    const x0=v.pos.x, x1=v.pos.x+v.dir*VEH_SCAN;
+    rectM(Math.min(x0,x1),Math.max(x0,x1),v.laneY-3,v.laneY+3,'rgba(31,79,224,0.08)');
+  }
+  for(const p of sim.peds){ if(p.state!=='waiting')continue;
+    fill(217,138,31,30); const eff=p.reckless?0.7*CROSS_SCAN:CROSS_SCAN;
+    circle(X(p.crossX),Y(p.kerbFrom),eff*2*ppm);
+  }
+}
+function updateHUD(){
+  const waiting=sim.peds.filter(p=>p.state==='waiting').length;
+  document.getElementById('hPed').textContent=sim.peds.length;
+  document.getElementById('hVeh').textContent=sim.vehs.length;
+  document.getElementById('hWait').textContent=waiting;
+  document.getElementById('hCross').textContent=crossingsDone;
+  document.getElementById('hSig').textContent=sigGreen(sim.t)?'green':'red';
+}
+
+// ================== UI WIRING ================================
+function wireUI(){
+  const $=id=>document.getElementById(id);
+  $('playBtn').onclick=()=>{running=!running; $('playBtn').textContent=running?'Pause':'Play';};
+  $('stepBtn').onclick=()=>{ const r=running; running=false; $('playBtn').textContent='Play'; sim.update(simMult/60); };
+  $('resetBtn').onclick=()=>{ sim=new Sim(); };
+  $('pedSld').oninput=e=>{targetPeds=+e.target.value; $('pedVal').textContent=targetPeds;};
+  $('vehSld').oninput=e=>{targetVehs=+e.target.value; $('vehVal').textContent=targetVehs;};
+  $('recSld').oninput=e=>{recklessP=(+e.target.value)/100; $('recVal').textContent=e.target.value;};
+  $('spdSld').oninput=e=>{simMult=(+e.target.value)/10; $('spdVal').textContent=simMult.toFixed(1)+'×';};
+  $('scanChk').onchange=e=>showScan=e.target.checked;
+  $('labelChk').onchange=e=>showLabels=e.target.checked;
+}
+</script>
+</body>
+</html>
