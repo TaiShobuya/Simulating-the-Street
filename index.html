@@ -224,7 +224,7 @@ class Ped{
       const ahead=(v.dir>0)?(v.pos.x< this.crossX):(v.pos.x> this.crossX);
       const d=Math.abs(v.pos.x-this.crossX);
       if(ahead && d<eff){
-        if(v.state==='stopping' && d>4) continue; // a stopping car yields
+        if(v.state==='stopping' && d>1) continue; // a stopping car yields
         return false;
       }
     }
