@@ -386,9 +386,9 @@ function draw(){
   updateHUD();
 }
 
-function rectM(x0,x1,y0,y1,fill,stroke){
-  if(fill){noStroke();fill(fill);} else noFill();
-  if(stroke){stroke(stroke);strokeWeight(1);} else noStroke();
+function rectM(x0,x1,y0,y1,fillCol,strokeCol){
+  if(fillCol){noStroke();fill(fillCol);} else noFill();
+  if(strokeCol){stroke(strokeCol);strokeWeight(1);} else noStroke();
   rect(X(x0),Y(y1),(x1-x0)*ppm,(y1-y0)*ppm);
 }
 function drawSite(){
@@ -445,7 +445,7 @@ function drawVeh(v){
   const w=v.L*ppm, h=v.W*ppm;
   rect(-w/2,-h/2,w,h,1.5);
   // direction nib
-  fill('#F4F2EA'); const nx=v.dir>0?w/2-2:-w/2; rect(nx-(v.dir>0?0:0),-h/2+1.5,2,h-3,0.5);
+  fill('#F4F2EA'); const nx=v.dir>0?w/2-2:-w/2; rect(nx,-h/2+1.5,2,h-3,0.5);
   pop();
 }
 function drawScan(){
@@ -473,7 +473,7 @@ function updateHUD(){
 function wireUI(){
   const $=id=>document.getElementById(id);
   $('playBtn').onclick=()=>{running=!running; $('playBtn').textContent=running?'Pause':'Play';};
-  $('stepBtn').onclick=()=>{ const r=running; running=false; $('playBtn').textContent='Play'; sim.update(simMult/60); };
+  $('stepBtn').onclick=()=>{ running=false; $('playBtn').textContent='Play'; sim.update(simMult/60); };
   $('resetBtn').onclick=()=>{ sim=new Sim(); };
   $('pedSld').oninput=e=>{targetPeds=+e.target.value; $('pedVal').textContent=targetPeds;};
   $('vehSld').oninput=e=>{targetVehs=+e.target.value; $('vehVal').textContent=targetVehs;};
