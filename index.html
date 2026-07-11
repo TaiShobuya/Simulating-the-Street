@@ -409,7 +409,7 @@ function drawSite(){
   for(let zx=SITE.zebraX[0];zx<SITE.zebraX[1];zx+=1.6){ rectM(zx,zx+0.8,SOUTH_KERB,NORTH_KERB,'#F4F2EA'); }
   // markers
   SITE.obstacles.forEach(o=>marker(o,'#14110D',1.0));
-  SITE.shopsS.concat(SITE.shopsN).forEach(s=>marker(s,'#2E73C9',1.3));
+  SITE.shopsS.concat(SITE.shopsN).forEach(s=>squareMarker(s,'#14110D',1.3));
   SITE.stationExits.forEach(s=>marker(s,'#D98A1F',1.6));
   SITE.stationEnts.forEach(s=>marker(s,'#D98A1F',1.6));
   SITE.endsS.concat(SITE.endsN).forEach(s=>marker(s,'#B23A2E',1.6));
@@ -420,6 +420,7 @@ function drawSite(){
   if(showLabels) labels();
 }
 function marker(p,col,rm){ noStroke(); fill(col); circle(X(p.x),Y(p.y),rm*ppm*0.9); }
+function squareMarker(p,col,rm){ noStroke(); fill(col); const s=rm*ppm*0.9; rect(X(p.x)-s/2,Y(p.y)-s/2,s,s); }
 function labels(){
   noStroke(); fill('#9A9586'); textFont('IBM Plex Mono'); textSize(9);
   textAlign(LEFT,BOTTOM);
