@@ -132,10 +132,10 @@ const GROUP_W = [0.20,0.40,0.30,0.10]; // P(group size 1,2,3,4)
 const SITE = buildSite();
 function buildSite(){
   const shopsS=[], shopsN=[];
-  // south pavement shops (blue dots) — skip station/side-street gaps
-  [22,40,52,100,116,132,168,182,196,212].forEach(x=>shopsS.push({x,y:18.8}));
-  // north pavement shops
-  [40,60,78,96,118,150,168,184,200,216].forEach(x=>shopsN.push({x,y:30.2}));
+  // south pavement shops along the building edge — skip station/side-street gaps
+  [22,40,52,100,116,132,168,182,196,212].forEach(x=>shopsS.push({x,y:14.8}));
+  // north pavement shops along the building edge
+  [40,60,78,96,118,150,168,184,200,216].forEach(x=>shopsN.push({x,y:34.2}));
   const stationExits=[{x:62,y:15.2},{x:92,y:15.2}];   // orange (spawn)
   const stationEnts =[{x:70,y:15.2},{x:100,y:15.2}];  // orange (despawn)
   const busStop={x:152,y:18.9};                        // ped bus stop (orange sq)
@@ -415,7 +415,6 @@ function drawSite(){
   SITE.shopsS.concat(SITE.shopsN).forEach(s=>squareMarker(s,'#14110D',1.3));
   SITE.stationExits.forEach(s=>triMarker(s,'#14110D',1.6));
   SITE.stationEnts.forEach(s=>triMarker(s,'#14110D',1.6));
-  SITE.endsS.concat(SITE.endsN).forEach(s=>marker(s,'#B23A2E',1.6));
   SITE.signals.forEach(s=>marker(s, sigGreen(sim?sim.t:0)?'#2E7D5B':'#B23A2E',1.8));
   // bus stop square
   noStroke(); fill('#D98A1F');
