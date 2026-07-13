@@ -252,7 +252,7 @@ class Ped{
       this.pos.y+=sgn*CROSS_SPD*dt;
       this.pos.x=this.crossX;
       if((sgn>0&&this.pos.y>=this.kerbTo)||(sgn<0&&this.pos.y<=this.kerbTo)){
-        this.pos.y=this.kerbTo; this.side=this.destSide; this.needsCross=false;
+        this.pos.y=sgn>0?NP[0]:SP[1]; this.side=this.destSide; this.needsCross=false;
         this.state='moving'; this.vel={x:0,y:0};
       }
     }
