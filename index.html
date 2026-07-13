@@ -141,13 +141,12 @@ function buildSite(){
   const busStop={x:152,y:18.9};                        // ped bus stop (orange sq)
   const vehBusStop={x:152,y:LANE_E};                   // vehicle bus stop
   const signals=[{x:24,y:SOUTH_KERB},{x:24,y:NORTH_KERB}]; // purple
-  const zebraX=[18,30];                                // crossing stripes (visual)
   const obstacles=[{x:48,y:18.6},{x:120,y:18.4},{x:176,y:18.9},
                    {x:55,y:30.4},{x:104,y:30.1},{x:140,y:30.5},{x:206,y:30.2}];
   const endsS=[{x:1.5,y:18.5},{x:228.5,y:18.5}];
   const endsN=[{x:1.5,y:31.5},{x:228.5,y:31.5}];
   return {shopsS,shopsN,stationExits,stationEnts,busStop,vehBusStop,
-          signals,zebraX,obstacles,endsS,endsN};
+          signals,obstacles,endsS,endsN};
 }
 
 // ---- small vector helpers -----------------------------------
@@ -395,46 +394,92 @@ function rectM(x0,x1,y0,y1,fillCol,strokeCol){
   rect(X(x0),Y(y1),(x1-x0)*ppm,(y1-y0)*ppm);
 }
 function drawSite(){
-  // blocks
-  rectM(0,L,0,14,'#EAE7DD'); rectM(0,L,35,49,'#EAE7DD');
+  const BLK='#E9ECF0', PAVE='#E5EDDD', ROAD='#E8E6DF', LINE='#C7C2B4';
   // pavements
-  rectM(0,L,14,20,'#E5EDDD'); rectM(0,L,29,35,'#E5EDDD');
+  rectM(0,L,14,20,PAVE); rectM(0,L,29,35,PAVE);
   // carriageway
-  rectM(0,L,20,29,'#E8E6DF');
-  // lane divider (dashed centre of road)
+  rectM(0,L,20,29,ROAD);
+  // building blocks (deformed plot: gaps are side streets, [177,183] is a passage)
+  [[2,13],[22,101.5],[108.5,177],[183,229]].forEach(b=>rectM(b[0],b[1],35,48.5,BLK,LINE));
+  [[2,13],[22,78],[84,124],[130,214],[220,229]].forEach(b=>rectM(b[0],b[1],0.5,14,BLK,LINE));
+  // party walls
+  stroke(LINE); strokeWeight(1);
+  [40,61,84,122,140,158,196,214].forEach(x=>line(X(x),Y(48.5),X(x),Y(35)));
+  [36,50,110,118,144,158,172,186,200].forEach(x=>line(X(x),Y(14),X(x),Y(0.5)));
+  // side streets
+  sideStreet(13,22,true,true);        // Regent St
+  sideStreet(101.5,108.5,true,false); // Great Portland St
+  sideStreet(78,84,false,true);       // Argyll St
+  sideStreet(124,130,false,true);     // Hills Pl
+  sideStreet(214,220,false,true);     // Ramillies St
+  rectM(177,183,35,48.5,PAVE,LINE);   // pedestrian passage
+  // stations
+  station(58,74); station(88,104);
+  // lane divider (dashed centre of road, broken at the Regent St junction)
   stroke('#BBB6A8'); strokeWeight(1); drawingContext.setLineDash([6,7]);
-  line(X(0),Y(24.5),X(L),Y(24.5)); drawingContext.setLineDash([]);
-  // kerbs
-  stroke('#C7C2B4'); strokeWeight(1.2);
-  line(X(0),Y(SOUTH_KERB),X(L),Y(SOUTH_KERB)); line(X(0),Y(NORTH_KERB),X(L),Y(NORTH_KERB));
-  // zebra crossing stripes at the left intersection
-  noStroke(); fill('#F4F2EA');
-  for(let zx=SITE.zebraX[0];zx<SITE.zebraX[1];zx+=1.6){ rectM(zx,zx+0.8,SOUTH_KERB,NORTH_KERB,'#F4F2EA'); }
+  line(X(0),Y(24.5),X(14.5),Y(24.5)); line(X(20.5),Y(24.5),X(L),Y(24.5));
+  drawingContext.setLineDash([]);
+  // kerbs, broken at the Regent St junction
+  stroke(LINE); strokeWeight(1.2);
+  [SOUTH_KERB,NORTH_KERB].forEach(k=>{ line(X(0),Y(k),X(14.5),Y(k)); line(X(20.5),Y(k),X(L),Y(k)); });
+  // zebra crossings over the carriageway flanking the Regent St junction
+  noStroke();
+  for(const z of [[9,12.5],[23.5,27]]){
+    for(let zx=z[0];zx<z[1];zx+=1.4){ rectM(zx,zx+0.7,SOUTH_KERB,NORTH_KERB,'#F4F2EA'); }
+  }
+  // bus stop bay
+  rectM(148,156,19,20,'#EFC08A','#D98A1F');
   // markers
   SITE.obstacles.forEach(o=>marker(o,'#14110D',1.0));
   SITE.shopsS.concat(SITE.shopsN).forEach(s=>squareMarker(s,'#14110D',1.3));
   SITE.stationExits.forEach(s=>triMarker(s,'#14110D',1.6));
   SITE.stationEnts.forEach(s=>triMarker(s,'#14110D',1.6));
   SITE.signals.forEach(s=>marker(s, sigGreen(sim?sim.t:0)?'#2E7D5B':'#B23A2E',1.8));
-  // bus stop square
-  noStroke(); fill('#D98A1F');
-  rect(X(SITE.busStop.x)-6,Y(SITE.busStop.y)-4,12,8,1);
   if(showLabels) labels();
+}
+function sideStreet(x0,x1,north,south){
+  const PAVE='#E5EDDD', ROAD='#E8E6DF', LINE='#C7C2B4';
+  const rx0=x0+1.5, rx1=x1-1.5;
+  if(north){
+    rectM(x0,x1,35,48.5,PAVE);
+    rectM(rx0,rx1,35,48.5,ROAD);
+    stroke(LINE); strokeWeight(1);
+    line(X(rx0),Y(48.5),X(rx0),Y(35)); line(X(rx1),Y(48.5),X(rx1),Y(35));
+    bandCrossing(rx0,rx1,29,35);
+  }
+  if(south){
+    rectM(x0,x1,0.5,14,PAVE);
+    rectM(rx0,rx1,0.5,14,ROAD);
+    stroke(LINE); strokeWeight(1);
+    line(X(rx0),Y(14),X(rx0),Y(0.5)); line(X(rx1),Y(14),X(rx1),Y(0.5));
+    bandCrossing(rx0,rx1,14,20);
+  }
+}
+// side-street mouth over the Oxford St pavement: road surface plus a striped crossing
+function bandCrossing(rx0,rx1,y0,y1){
+  rectM(rx0,rx1,y0,y1,'#E8E6DF');
+  noStroke();
+  for(let zx=rx0+0.5;zx<rx1-0.4;zx+=1.3){ rectM(zx,zx+0.65,y0+0.4,y1-0.4,'#F4F2EA'); }
+}
+function station(x0,x1){
+  rectM(x0,x1,6,14,'#F5E1C3','#DFA86A');
+  stroke('#E8C79B'); strokeWeight(1);
+  for(let sx=x0+1;sx<x1;sx+=1.5) line(X(sx),Y(14),X(sx),Y(6));
 }
 function marker(p,col,rm){ noStroke(); fill(col); circle(X(p.x),Y(p.y),rm*ppm*0.9); }
 function squareMarker(p,col,rm){ noStroke(); fill(col); const s=rm*ppm*0.9; rect(X(p.x)-s/2,Y(p.y)-s/2,s,s); }
 function triMarker(p,col,rm){ noStroke(); fill(col); const s=rm*ppm*0.9; const cx=X(p.x),cy=Y(p.y); triangle(cx,cy-s/2,cx-s/2,cy+s/2,cx+s/2,cy+s/2); }
 function labels(){
   noStroke(); fill('#9A9586'); textFont('IBM Plex Mono'); textSize(9);
-  textAlign(LEFT,BOTTOM);
-  text('IKEA',X(56),Y(45)); text('HSBC',X(150),Y(45)); text('H&M',X(214),Y(45));
-  textAlign(LEFT,TOP);
-  text('Oxford Street Station',X(46),Y(13)); text('Boots',X(214),Y(13));
-  textAlign(CENTER,CENTER); fill('#8C8779');
-  text('OXFORD ST',X(115),Y(24.5));
-  textAlign(LEFT,BOTTOM); fill('#9A9586');
-  text('Regent St',X(15),Y(48)); text('Great Portland St',X(135),Y(48));
-  text('Bus Stop',X(146),Y(21.4));
+  textAlign(CENTER,CENTER);
+  text('IKEA',X(45),Y(42)); text('HSBC',X(167),Y(42)); text('H&M',X(223),Y(42));
+  text('Regent St',X(17.5),Y(51)); text('Great Portland St',X(105),Y(51));
+  text('Argyll St',X(81),Y(-2)); text('Hills Pl',X(127),Y(-2)); text('Ramillies St',X(217),Y(-2));
+  text('Oxford Street',X(66),Y(11.2)); text('Station',X(66),Y(8.8));
+  text('Oxford Street',X(96),Y(11.2)); text('Station',X(96),Y(8.8));
+  text('Boots',X(224.5),Y(7));
+  fill('#8C8779'); text('OXFORD ST',X(115),Y(24.5));
+  fill('#9A9586'); text('Bus Stop',X(152),Y(21.8));
 }
 function drawPed(p){
   let c='#14110D';
