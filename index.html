@@ -49,6 +49,10 @@
   .sq{width:11px;height:7px;display:inline-block;border-radius:1px;}
   .foot{margin-top:18px;font-size:11px;color:var(--ink-soft);line-height:1.6;
     font-family:"IBM Plex Mono",monospace;border-top:1px solid var(--line);padding-top:12px;}
+  .rules{margin-top:28px;}
+  .rules h2{font-size:15px;font-weight:600;margin:4px 0 4px;}
+  .rules p{font-size:12px;color:var(--ink-soft);margin:0 0 12px;line-height:1.5;}
+  .rules img{display:block;width:100%;height:auto;border:1px solid var(--line);background:#fff;}
 </style>
 </head>
 <body>
@@ -97,6 +101,14 @@
   <div class="foot">
     Pedestrian steering fuses the Social Force Model (Helbing &amp; Molnár 1995) with Boids; vehicles use IDM-inspired leader-matching; crossings resolve through gap acceptance (Zhao et al. 2019). Reckless agents (default 5%) accept a 0.7× gap. Reconstructed from the project's documented behaviour and site plot. Origin bottom-left; street 230 m, cross-section 49 m.
   </div>
+
+  <section class="rules">
+    <div class="eyebrow">Behaviour rules</div>
+    <h2>How the agents decide</h2>
+    <p>The four core behaviours, tested frame by frame in the original Grasshopper model.</p>
+    <img src="assets/behaviour-rules.png" width="1434" height="724" loading="lazy"
+      alt="Four annotated simulation frames. A, Social Force Steering: a composite steering vector built from desired direction plus peer, obstacle and edge repulsions. B, Threat Detection: each vehicle's forward scan rectangle returns isClear and the vehicle stops when it is false. C, Gap acceptance: pedestrians cross only when no approaching vehicle is within 20 m, reckless agents use 0.7 times that range. D, Negotiated Crossing: a stopping vehicle promotes a waiting pedestrian to crossing.">
+  </section>
 </div>
 
 <script>
