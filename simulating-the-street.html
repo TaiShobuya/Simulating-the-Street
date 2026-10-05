@@ -340,7 +340,16 @@ class Veh{
 
 // ================== SIM ======================================
 class Sim{
-  constructor(){ this.peds=[]; this.vehs=[]; this.gid=0; this.t=0; }
+  // like the Grasshopper original, a run spawns its agents once and never tops them up:
+  // every pedestrian appears at the start and vehicles queue to enter one by one
+  constructor(){
+    this.peds=[]; this.vehs=[]; this.gid=0; this.t=0;
+    let guard=0;
+    while(this.peds.length<targetPeds && guard++<targetPeds*4) this.spawnPedGroup();
+    this.peds.length=Math.min(this.peds.length,targetPeds);
+    this.pendingVehs=targetVehs;
+  }
+  isEmpty(){ return this.peds.length===0 && this.vehs.length===0 && this.pendingVehs===0; }
   pedSpawns(){ return [...SITE.endsS,...SITE.endsN,...SITE.stationExits,...SITE.shopsS,...SITE.shopsN]; }
   pedDests(){ return [...SITE.endsS,...SITE.endsN,...SITE.stationEnts,...SITE.shopsS,...SITE.shopsN,SITE.busStop]; }
   spawnPedGroup(){
@@ -357,12 +366,10 @@ class Sim{
   }
   update(dt){
     this.t+=dt;
-    // maintain populations
-    let guard=0;
-    while(this.peds.length<targetPeds && guard++<30) this.spawnPedGroup();
-    if(this.vehs.length<targetVehs && Math.random()<RELEASE_P){
+    if(this.pendingVehs>0 && Math.random()<RELEASE_P){
       const dir=Math.random()<0.5?1:-1;
       this.vehs.push(new Veh(dir, Math.random()<BUS_P));
+      this.pendingVehs--;
     }
     for(const p of this.peds) p.update(dt,this.peds,this.vehs);
     for(const v of this.vehs) v.update(dt,this.peds,this.vehs,this.t);
@@ -375,6 +382,12 @@ class Sim{
 let MX=14, MTOP=26, MBOT=18, ppm=4.5, plotW=0, plotH=0;
 const X=xm=>MX+xm*ppm;
 const Y=ym=>MTOP+(H-ym)*ppm;
+
+// advance one frame; start a fresh run once every agent has left the street
+function stepSim(){
+  sim.update(simMult/60);
+  if(sim.isEmpty() && targetPeds+targetVehs>0) sim=new Sim();
+}
 
 function setup(){
   const host=document.getElementById('sketch');
@@ -391,7 +404,7 @@ function windowResized(){ const w=document.getElementById('sketch').clientWidth;
 
 function draw(){
   background('#F4F2EA');
-  if(running){ const dt=simMult/60; sim.update(dt); }
+  if(running) stepSim();
   drawSite();
   for(const v of sim.vehs) drawVeh(v);
   for(const p of sim.peds) drawPed(p);
@@ -535,7 +548,7 @@ function updateHUD(){
 function wireUI(){
   const $=id=>document.getElementById(id);
   $('playBtn').onclick=()=>{running=!running; $('playBtn').textContent=running?'Pause':'Play';};
-  $('stepBtn').onclick=()=>{ running=false; $('playBtn').textContent='Play'; sim.update(simMult/60); };
+  $('stepBtn').onclick=()=>{ running=false; $('playBtn').textContent='Play'; stepSim(); };
   const reset=()=>{ sim=new Sim(); };
   $('resetBtn').onclick=reset;
   // population sliders restart the run on release so the new values apply to every agent
