@@ -151,7 +151,7 @@ function buildSite(){
   const stationExits=[{x:62,y:15.2},{x:92,y:15.2}];   // orange (spawn)
   const stationEnts =[{x:70,y:15.2},{x:100,y:15.2}];  // orange (despawn)
   const busStop={x:152,y:18.9};                        // ped bus stop (orange sq)
-  const vehBusStop={x:152,y:LANE_E};                   // vehicle bus stop
+  const vehBusStop={x:152,y:LANE_W};                   // vehicle bus stop (lower, westbound lane)
   const signals=[{x:24,y:SOUTH_KERB},{x:24,y:NORTH_KERB}]; // purple
   const obstacles=[{x:48,y:18.6},{x:120,y:18.4},{x:176,y:18.9},
                    {x:55,y:30.4},{x:104,y:30.1},{x:140,y:30.5},{x:206,y:30.2}];
@@ -313,8 +313,8 @@ class Veh{
     return {block, leaderSpeed, leaderGap};
   }
   update(dt, peds, vehs, t){
-    // bus dwell at stop
-    if(this.isBus&&!this.busDone){
+    // bus dwell at stop: only westbound (lower-lane) buses serve it
+    if(this.isBus&&this.dir<0&&!this.busDone){
       const d=Math.abs(this.pos.x-SITE.vehBusStop.x);
       const past=this.dir>0?this.pos.x>SITE.vehBusStop.x:this.pos.x<SITE.vehBusStop.x;
       if(d<3&&!past){ this.state='stopping'; this.speed=0; this.dwell+=dt;
