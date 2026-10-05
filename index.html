@@ -535,10 +535,13 @@ function wireUI(){
   const $=id=>document.getElementById(id);
   $('playBtn').onclick=()=>{running=!running; $('playBtn').textContent=running?'Pause':'Play';};
   $('stepBtn').onclick=()=>{ running=false; $('playBtn').textContent='Play'; sim.update(simMult/60); };
-  $('resetBtn').onclick=()=>{ sim=new Sim(); };
+  const reset=()=>{ sim=new Sim(); };
+  $('resetBtn').onclick=reset;
+  // population sliders restart the run on release so the new values apply to every agent
   $('pedSld').oninput=e=>{targetPeds=+e.target.value; $('pedVal').textContent=targetPeds;};
   $('vehSld').oninput=e=>{targetVehs=+e.target.value; $('vehVal').textContent=targetVehs;};
   $('recSld').oninput=e=>{recklessP=(+e.target.value)/100; $('recVal').textContent=e.target.value;};
+  ['pedSld','vehSld','recSld'].forEach(id=>$(id).onchange=reset);
   $('spdSld').oninput=e=>{simMult=(+e.target.value)/10; $('spdVal').textContent=simMult.toFixed(1)+'×';};
   $('scanChk').onchange=e=>showScan=e.target.checked;
   $('labelChk').onchange=e=>showLabels=e.target.checked;
