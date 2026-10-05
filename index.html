@@ -80,7 +80,7 @@
       <span>pedestrians <b id="hPed">0</b></span>
       <span>vehicles <b id="hVeh">0</b></span>
       <span>waiting <b id="hWait">0</b></span>
-      <span>crossings <b id="hCross">0</b></span>
+      <span>crossing <b id="hCross">0</b></span>
       <span>signal <b id="hSig">—</b></span>
     </div>
   </div>
@@ -176,7 +176,6 @@ const pick=arr=>arr[(Math.random()*arr.length)|0];
 let sim, running=true, simMult=2.0, recklessP=0.05;
 let targetPeds=70, targetVehs=16;
 let showScan=false, showLabels=true;
-let crossingsDone=0;
 
 function groupSize(){const r=Math.random();let a=0;for(let i=0;i<4;i++){a+=GROUP_W[i];if(r<a)return i+1;}return 1;}
 function sigGreen(t){return (Math.floor(t/SIG_HALF)%2)===0;} // true=green for vehicles
@@ -257,7 +256,7 @@ class Ped{
       }
     } else if(this.state==='waiting'){
       this.pos.x=this.crossX;
-      if(this.gapClear(vehs)){ this.state='crossing'; crossingsDone++; }
+      if(this.gapClear(vehs)){ this.state='crossing'; }
     } else if(this.state==='crossing'){
       const sgn=this.kerbTo>this.kerbFrom?1:-1;
       this.pos.y+=sgn*CROSS_SPD*dt;
@@ -341,7 +340,7 @@ class Veh{
 
 // ================== SIM ======================================
 class Sim{
-  constructor(){ this.peds=[]; this.vehs=[]; this.gid=0; this.t=0; crossingsDone=0; }
+  constructor(){ this.peds=[]; this.vehs=[]; this.gid=0; this.t=0; }
   pedSpawns(){ return [...SITE.endsS,...SITE.endsN,...SITE.stationExits,...SITE.shopsS,...SITE.shopsN]; }
   pedDests(){ return [...SITE.endsS,...SITE.endsN,...SITE.stationEnts,...SITE.shopsS,...SITE.shopsN,SITE.busStop]; }
   spawnPedGroup(){
@@ -521,12 +520,14 @@ function drawScan(){
     circle(X(p.crossX),Y(p.kerbFrom),eff*2*ppm);
   }
 }
+// live counts of agents visible in this frame (vehicles spawn and despawn just off-screen)
 function updateHUD(){
-  const waiting=sim.peds.filter(p=>p.state==='waiting').length;
-  document.getElementById('hPed').textContent=sim.peds.length;
-  document.getElementById('hVeh').textContent=sim.vehs.length;
-  document.getElementById('hWait').textContent=waiting;
-  document.getElementById('hCross').textContent=crossingsDone;
+  const peds=sim.peds.filter(p=>p.pos.x>=0&&p.pos.x<=L);
+  const vehs=sim.vehs.filter(v=>v.pos.x+v.L/2>0&&v.pos.x-v.L/2<L);
+  document.getElementById('hPed').textContent=peds.length;
+  document.getElementById('hVeh').textContent=vehs.length;
+  document.getElementById('hWait').textContent=peds.filter(p=>p.state==='waiting').length;
+  document.getElementById('hCross').textContent=peds.filter(p=>p.state==='crossing').length;
   document.getElementById('hSig').textContent=sigGreen(sim.t)?'green':'red';
 }
 
